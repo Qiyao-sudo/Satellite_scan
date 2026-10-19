@@ -1,0 +1,29 @@
+# 输出与中间产物
+out/
+build/
+tex/
+.sattex_*/
+*.mp4
+*.mkv
+*.mov
+*.jpg
+*.png
+
+# 但保留 README 用的素材
+!assets/*.gif
+!assets/*.jpg
+!assets/*.png
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
