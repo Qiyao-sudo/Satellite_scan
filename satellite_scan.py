@@ -87,7 +87,7 @@ LOOKS = {
         line_depth=0.12, hblur=3, grain=2, bloom=0.06,
         vignette=0.0, band_amp=0.0, chroma_split=0,
         bar_amp=0.62, bar_fringe=0.042, bar_core=0.0024, bar_fall=0.008,
-        bar_speed=0.30,
+        bar_speed=0.60,
     ),
     # 热成像：灰度 -> 熔岩色表
     "thermal": dict(
@@ -129,7 +129,7 @@ class Look:
 
     # ---- 白条扫描（这套效果的主角）----
     bar_amp: float = 0.70         # 白条峰值亮度（screen 混合量，1.0 = 压成死白）
-    bar_speed: float = 0.34       # 白条下移速度（每秒多少个画面高）
+    bar_speed: float = 0.68       # 白条下移速度（每秒多少个画面高）
     bar_period: float = 3.0       # 一屏里有几根白条（整数才能无缝循环）
     bar_core: float = 0.0028      # 白条本体（细亮线）半宽，画面高的比例
     bar_fringe: float = 0.050     # 白条外面那圈“稍淡的边框”半宽 <- 想更粗就调大
