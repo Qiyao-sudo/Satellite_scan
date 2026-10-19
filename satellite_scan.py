@@ -87,7 +87,7 @@ LOOKS = {
         line_depth=0.12, hblur=3, grain=2, bloom=0.06,
         vignette=0.0, band_amp=0.0, chroma_split=0,
         bar_amp=0.62, bar_fringe=0.042, bar_core=0.0024, bar_fall=0.008,
-        bar_speed=0.60,
+        bar_speed=1.20,
     ),
     # 热成像：灰度 -> 熔岩色表
     "thermal": dict(
@@ -129,7 +129,7 @@ class Look:
 
     # ---- 白条扫描（这套效果的主角）----
     bar_amp: float = 0.70         # 白条峰值亮度（screen 混合量，1.0 = 压成死白）
-    bar_speed: float = 0.68       # 白条下移速度（每秒多少个画面高）
+    bar_speed: float = 1.36       # 白条下移速度（输出画面高/秒）
     bar_period: float = 3.0       # 一屏里有几根白条（整数才能无缝循环）
     bar_core: float = 0.0028      # 白条本体（细亮线）半宽，画面高的比例
     bar_fringe: float = 0.050     # 白条外面那圈“稍淡的边框”半宽 <- 想更粗就调大
@@ -510,12 +510,15 @@ class Renderer:
             tex_blend(soft_idx, "sft", "screen")
 
         # ---- 4. 白条自上而下扫描（screen：叠上去就是白光，压掉底下的细节） --
+        # 注意 ffmpeg 的 scroll 参数是「每帧移动多少个画面高」，不是每秒。
+        # 想按"每秒多少画面高"给参数，就得除以帧率；再除以 speed 抵消 setpts
+        # （压缩时间轴后，输出每帧跨过 speed 个处理帧）。
+        fps_ref = max(float(self.fps or 30.0), 1e-6)
+        spd_scale = 1.0 / (fps_ref * max(float(L.speed or 1.0), 1e-6))
         if bars_idx > 0:
-            # bar_speed 按"输出时间"定义：变速之后白条的走速保持不变，
-            # 所以这里要先除回 speed（setpts 会把时间轴压快 speed 倍）
-            rate = abs(L.bar_speed) / max(float(L.speed or 1.0), 1e-6)
+            rate = abs(L.bar_speed) * spd_scale
             spd = -rate if L.bar_speed else 0.0                 # 负号 = 向下
-            pre = f",scroll=vertical={_num(round(spd, 6))}:horizontal=0"
+            pre = f",scroll=vertical={_num(round(spd, 8))}:horizontal=0"
             stmts.append(f"[{bars_idx}:v]format={pix}{pre}[brs]")
             if luma_only:
                 spec = "c0_mode=screen:c1_mode=none:c2_mode=none"
@@ -528,7 +531,8 @@ class Renderer:
         if bands_idx > 0:
             pre = ""
             if L.band_scroll:
-                pre = f",scroll=vertical={_num(round(L.band_scroll, 5))}:horizontal=0"
+                pre = (f",scroll=vertical="
+                       f"{_num(round(L.band_scroll * spd_scale, 8))}:horizontal=0")
             stmts.append(f"[{bands_idx}:v]format=gbrp{pre}[bd]")
             stmts.append(f"{cur}[bd]blend=all_mode=overlay:shortest=0{nxt()}")
             cur = f"[g{lvl}]"
@@ -723,7 +727,7 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--bar-amp", type=float, default=None,
                    help="白条强度 0..1（1 = 压成死白）")
     g.add_argument("--bar-speed", type=float, default=None,
-                   help="白条下移速度（画面高/秒）")
+                   help="白条下移速度（输出画面高/秒，不受 --speed 影响）")
     g.add_argument("--bar-period", type=float, default=None,
                    help="一屏里有几根白条（整数）")
     g.add_argument("--bar-core", type=float, default=None,
